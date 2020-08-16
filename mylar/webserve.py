@@ -53,20 +53,24 @@ def serve_template(templatename, **kwargs):
         tmper_dir = 'default'
     else:
         tmper_dir = mylar.CONFIG.INTERFACE
-    
+
     icons = []
     if mylar.CONFIG.INTERFACE == 'default':
         icons = {'icon_gear': os.path.join(mylar.CONFIG.HTTP_ROOT, 'images', 'icon_gear.png'),
                  'icon_upcoming': os.path.join(mylar.CONFIG.HTTP_ROOT, 'images', 'icon_upcoming.png'),
                  'icon_wanted': os.path.join(mylar.CONFIG.HTTP_ROOT, 'images', 'icon_wanted.png'),
                  'prowl_logo': os.path.join(mylar.CONFIG.HTTP_ROOT, 'images', 'prowl_logo.png'),
-                 'ReadingList-icon': os.path.join(mylar.CONFIG.HTTP_ROOT, 'images', 'ReadingList-icon.png')}
+                 'ReadingList-icon': os.path.join(mylar.CONFIG.HTTP_ROOT, 'images', 'ReadingList-icon.png'),
+                 'next': os.path.join(mylar.CONFIG.HTTP_ROOT, 'images', 'next.gif'),
+                 'prev': os.path.join(mylar.CONFIG.HTTP_ROOT, 'images', 'prev.gif')}
     else:
         icons = {'icon_gear': os.path.join(mylar.CONFIG.HTTP_ROOT, 'interfaces', 'carbon', 'images', 'icon_gear.png'),
                  'icon_upcoming': os.path.join(mylar.CONFIG.HTTP_ROOT, 'interfaces', 'carbon', 'images', 'icon_upcoming.png'),
                  'icon_wanted': os.path.join(mylar.CONFIG.HTTP_ROOT, 'interfaces', 'carbon', 'images', 'icon_wanted.png'),
                  'prowl_logo': os.path.join(mylar.CONFIG.HTTP_ROOT, 'interfaces', 'carbon', 'images', 'prowl_logo.png'),
-                 'ReadingList-icon': os.path.join(mylar.CONFIG.HTTP_ROOT, 'interfaces', 'carbon', 'images', 'ReadingList-icon.png')}
+                 'ReadingList-icon': os.path.join(mylar.CONFIG.HTTP_ROOT, 'interfaces', 'carbon', 'images', 'ReadingList-icon.png'),
+                 'next': os.path.join(mylar.CONFIG.HTTP_ROOT, 'interfaces', 'carbon', 'images', 'next.gif'),
+                 'prev': os.path.join(mylar.CONFIG.HTTP_ROOT, 'interfaces', 'carbon', 'images', 'prev.gif')}
 
     template_dir = os.path.join(str(interface_dir), tmper_dir)
     _hplookup = TemplateLookup(directories=[template_dir])
@@ -4179,7 +4183,7 @@ class WebInterface(object):
         unfiltered = []
         for each_section in mylar.config.config.sections():
             for k,v in mylar.config.config.items(each_section):
-                unfiltered.insert( 0, (k, v.decode('utf-8')) )
+                unfiltered.insert( 0, (k, v) )
 
         if sSearch == "" or sSearch == None:
             logger.info('getConfig: No search terms.')
