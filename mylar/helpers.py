@@ -393,19 +393,8 @@ def rename_param(comicid, comicname, issue, ofilename, comicyear=None, issueid=N
             #comicid = issuenzb['ComicID']
             #issueno = str(issuenum).split('.')[0]
             issue_except = 'None'
-            issue_exceptions = ['AU',
-                                'INH',
-                                'NOW',
-                                'AI',
-                                'MU',
-                                'HU',
-                                'A',
-                                'B',
-                                'C',
-                                'X',
-                                'O']
             valid_spaces = ('.', '-')
-            for issexcept in issue_exceptions:
+            for issexcept in mylar.ISSUE_EXCEPTIONS:
                 if issexcept.lower() in issuenum.lower():
                     logger.fdebug('ALPHANUMERIC EXCEPTION : [' + issexcept + ']')
                     v_chk = [v for v in valid_spaces if v in issuenum]
@@ -462,10 +451,10 @@ def rename_param(comicid, comicname, issue, ofilename, comicyear=None, issueid=N
                 iss = issuenum
                 issueno = iss
             # issue zero-suppression here
-            if mylar.CONFIG.ZERO_LEVEL == "0":
+            if mylar.CONFIG.ZERO_LEVEL is False:
                 zeroadd = ""
             else:
-                if mylar.CONFIG.ZERO_LEVEL_N  == "none": zeroadd = ""
+                if any([mylar.CONFIG.ZERO_LEVEL_N  == "none", mylar.CONFIG.ZERO_LEVEL_N is None]): zeroadd = ""
                 elif mylar.CONFIG.ZERO_LEVEL_N == "0x": zeroadd = "0"
                 elif mylar.CONFIG.ZERO_LEVEL_N == "00x": zeroadd = "00"
 
@@ -493,7 +482,7 @@ def rename_param(comicid, comicname, issue, ofilename, comicyear=None, issueid=N
                     logger.warn('Unable to properly determine issue number [ %s] - you should probably log this on github for help.' % issueno)
                     return
 
-            if prettycomiss is None and len(str(issueno)) > 0:
+            if all([prettycomiss is None, len(str(issueno)) > 0]):
                 #if int(issueno) < 0:
                 #    self._log("issue detected is a negative")
                 #    prettycomiss = '-' + str(zeroadd) + str(abs(issueno))
@@ -512,7 +501,7 @@ def rename_param(comicid, comicname, issue, ofilename, comicyear=None, issueid=N
                     logger.fdebug('Zero level supplement set to ' + str(mylar.CONFIG.ZERO_LEVEL_N) + '. Issue will be set as : ' + str(prettycomiss))
                 elif int(issueno) >= 10 and int(issueno) < 100:
                     logger.fdebug('issue detected greater than 10, but less than 100')
-                    if mylar.CONFIG.ZERO_LEVEL_N == "none":
+                    if any([mylar.CONFIG.ZERO_LEVEL_N == "none", mylar.CONFIG.ZERO_LEVEL_N is None, mylar.CONFIG.ZERO_LEVEL is False]):
                         zeroadd = ""
                     else:
                         zeroadd = "0"
@@ -969,7 +958,7 @@ def issuedigits(issnum):
                 int_issnum = (int(issnum[:-2]) * 1000) + ord('a') + ord('u')
             elif 'ai' in issnum.lower() and issnum[:1].isdigit():
                 int_issnum = (int(issnum[:-2]) * 1000) + ord('a') + ord('i')
-            elif 'inh' in issnum.lower() or 'now' in issnum.lower():
+            elif 'inh' in issnum.lower():
                 remdec = issnum.find('.')  #find the decimal position.
                 if remdec == -1:
                 #if no decimal, it's all one string
@@ -992,6 +981,12 @@ def issuedigits(issnum):
                     int_issnum = (int(issnum[:-2]) * 1000) + ord('m') + ord('u')
                 else:
                     int_issnum = (int(issnum[:-3]) * 1000) + ord('m') + ord('u')
+            elif 'lr' in issnum.lower():
+                remdec = issnum.find('.')
+                if remdec == -1:
+                    int_issnum = (int(issnum[:-2]) * 1000) + ord('l') + ord('r')
+                else:
+                    int_issnum = (int(issnum[:-3]) * 1000) + ord('l') + ord('r')
             elif 'hu' in issnum.lower():
                 remdec = issnum.find('.')  #find the decimal position.
                 if remdec == -1:
@@ -1107,7 +1102,7 @@ def issuedigits(issnum):
                                 a+=1
                             int_issnum = (int(issno) * 1000) + ordtot
                     elif invchk == "true":
-                        if any([issnum.lower() == 'fall', issnum.lower() == 'spring', issnum.lower() == 'summer', issnum.lower() == 'winter']):
+                        if any([issnum.lower() == 'alpha', issnum.lower() == 'omega', issnum.lower() == 'fall', issnum.lower() == 'spring', issnum.lower() == 'summer', issnum.lower() == 'winter']):
                             inu = 0
                             ordtot = 0
                             while (inu < len(issnum)):
@@ -3767,15 +3762,27 @@ def getImage(comicid, url, issueid=None):
             #    buf = StringIO(r.content)
             #    f = gzip.GzipFile(fileobj=buf)
 
+            #remote_filesize = int(r.headers['Content-length'])
+            #logger.info('remote_filesize: %s' % remote_filesize)
+            #if os.path.isfile(coverfile):
+            #    #get the filesize of the existing cover
+            #    statinfo = os.stat(coverfile)
+            #    coversize = statinfo.st_size
+            #else:
+            #    coversize = 0
+
+            #if coversize != remote_filesize or coversize == 0:
             with open(coverfile, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=1024):
                     if chunk: # filter out keep-alive new chunks
                         f.write(chunk)
                         f.flush()
 
-
             statinfo = os.stat(coverfile)
             coversize = statinfo.st_size
+
+        return {'coversize': coversize,
+                'status':    'success'}
 
     if any([int(coversize) < 10000, statuscode != '200']):
         try:
@@ -3791,7 +3798,8 @@ def getImage(comicid, url, issueid=None):
         if os.path.exists(coverfile):
             os.remove(coverfile)
 
-        return 'retry'
+        return {'coversize': coversize,
+                'status':    'retry'}
 
 def publisherImages(publisher):
     comicpublisher = None
@@ -4217,6 +4225,74 @@ def file_ops(path,dst,arc=False,one_off=False):
 
     else:
         return False
+
+def log_that_exception(except_info):
+
+    #snip the log here and get the last 100 lines as quick leadup glance.
+    leadup = tail_that_log()
+
+    #logger.info('[LEADUP_LOG] %s' % leadup)
+    gather_info = {'comicname':   except_info.get('comicname', None),
+                   'issuenumber': except_info.get('issuenumber', None),
+                   'seriesyear':  except_info.get('seriesyear', None),
+                   'issueid':     except_info.get('issueid', None),
+                   'comicid':     except_info.get('comicid', None),
+                   'searchmode':  except_info.get('mode', None),
+                   'booktype':    except_info.get('booktype', None),
+                   'filename':    except_info.get('filename', None),
+                   'line_num':    except_info.get('line_num', None),
+                   'func_name':   except_info.get('func_name', None),
+                   'error_text':  except_info.get('err_text', None),
+                   'error':       except_info.get('err', None),
+                   'traceback':   except_info.get('traceback', None)}
+
+    #write it to the exceptions table.
+    logdate = now()
+    myDB = db.DBConnection()
+    myDB.upsert("exceptions_log", gather_info, {'date': logdate})
+
+    #write the leadup log lines that were tailed above to the external file here...
+    fileline = myDB.selectone("SELECT rowid from exceptions_log where date = ?", [logdate]).fetchone()
+    with open(os.path.join(mylar.CONFIG.LOG_DIR, 'specific_' + str(fileline['rowid']) + '.log'), 'w') as f:
+        f.writelines(leadup)
+        f.write(except_info.get('traceback', None))
+
+def tail_that_log():
+    """Tail a file and get X lines from the end"""
+    # place holder for the lines found
+    lines_found = []
+
+    f = open(os.path.join(mylar.CONFIG.LOG_DIR,'mylar.log'), 'r')
+    lines = 100
+    buffer = 4098
+
+    # block counter will be multiplied by buffer
+    # to get the block size from the end
+    block_counter = -1
+
+    # loop until we find X lines
+    while len(lines_found) <= lines:
+        try:
+            f.seek(block_counter * buffer, os.SEEK_END)
+        except IOError:  # either file is too small, or too many lines requested
+            f.seek(0)
+            lines_found = f.readlines()
+            break
+
+        lines_found = f.readlines()
+
+        # we found enough lines, get out
+        # Removed this line because it was redundant the while will catch
+        # it, I left it for history
+        # if len(lines_found) > lines:
+        #    break
+
+        # decrement the block counter to get the
+        # next X bytes
+        block_counter -= 1
+
+    return lines_found[-lines:]
+
 
 from threading import Thread
 
